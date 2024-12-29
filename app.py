@@ -6,8 +6,14 @@ import numpy as np
 from torchvision import transforms
 import io
 import base64
+import os
 
 app = Flask(__name__)
+app.config['ENV'] = os.environ.get('FLASK_ENV', 'production')
+print("Current working directory:", os.getcwd())
+print("Templates directory exists:", os.path.exists('templates'))
+print("Template file exists:", os.path.exists('templates/index.html'))
+port = int(os.environ.get("PORT", 8000))
 
 # Define the same CNN architecture
 class CNN(nn.Module):
@@ -68,4 +74,4 @@ def home():
     return render_template('index.html', prediction=prediction)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=port, debug=app.config['ENV'] == 'development') 
