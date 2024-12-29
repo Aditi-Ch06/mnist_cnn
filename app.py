@@ -1,51 +1,50 @@
-import torch
-from flask import Flask, render_template, request
-import torch.nn as nn
-from PIL import Image
-import numpy as np
-from torchvision import transforms
-import io
-import base64
 import os
+import torch
+import torch.nn as nn
+from flask import Flask, render_template, request
+from PIL import Image
+from torchvision import transforms
 
 app = Flask(__name__)
 app.config['ENV'] = os.environ.get('FLASK_ENV', 'production')
-print("Current working directory:", os.getcwd())
-print("Templates directory exists:", os.path.exists('templates'))
-print("Template file exists:", os.path.exists('templates/index.html'))
-port = int(os.environ.get("PORT", 8000))
 
-# Define the same CNN architecture
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        # convolutional layers
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, stride=1, padding="same")
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding='same')
+# Move model loading inside a try-except block
+try:
+    # Define the same CNN architecture
+    class CNN(nn.Module):
+        def __init__(self):
+            super(CNN, self).__init__()
+            # convolutional layers
+            self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, stride=1, padding="same")
+            self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+            self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding='same')
 
-        # fully connected layers
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(64*7*7, 1024)
-        self.fc2 = nn.Linear(1024, 10)
+            # fully connected layers
+            self.flatten = nn.Flatten()
+            self.fc1 = nn.Linear(64*7*7, 1024)
+            self.fc2 = nn.Linear(1024, 10)
 
-        # activation function
-        self.relu = nn.ReLU()
+            # activation function
+            self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.pool(x)
-        x = self.relu(self.conv2(x))
-        x = self.pool(x)
-        x = self.flatten(x)
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+        def forward(self, x):
+            x = self.relu(self.conv1(x))
+            x = self.pool(x)
+            x = self.relu(self.conv2(x))
+            x = self.pool(x)
+            x = self.flatten(x)
+            x = self.relu(self.fc1(x))
+            x = self.fc2(x)
+            return x
 
-# Load the trained model
-model = CNN()
-model.load_state_dict(torch.load('mnist_cnn.pth'))
-model.eval()
+    # Load the model
+    model = CNN()
+    model_path = os.path.join(os.path.dirname(__file__), 'mnist_cnn.pth')
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.eval()
+except Exception as e:
+    print(f"Error loading model: {str(e)}")
+    model = None
 
 # Transform for input images
 transform = transforms.Compose([
@@ -56,6 +55,9 @@ transform = transforms.Compose([
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    if model is None:
+        return "Model failed to load", 500
+        
     prediction = None
     if request.method == 'POST':
         # Get the image from post request
@@ -74,4 +76,5 @@ def home():
     return render_template('index.html', prediction=prediction)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=port, debug=app.config['ENV'] == 'development') 
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port) 
