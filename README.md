@@ -89,7 +89,7 @@ Then open your browser at http://127.0.0.1:8000/
 
 🌐 Deployment
 
-The app is deployed using Flask and accessible at:
+The application is deployed using Flask and accessible at:
 👉 https://mnist-cnn-1.onrender.com
 
 📸 Screenshots
